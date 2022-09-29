@@ -1,10 +1,53 @@
-from fastapi import FastAPI
-from models import *
+from fastapi import FastAPI, Depends, HTTPException
+from schemas import *
+import sqlalchemy
+import models
+import json
+#from database import *
+import crud
+from database import SessionLocal, engine
+
 #import nipap
 # Dev-Krams
 from ipaddress import IPv4Address, IPv4Network, IPv6Network
 
-app = FastAPI()
+description = """
+This API provides an easy way to register IP-Addresses for the Freifunk Berlin Network automatically.
+
+The process for registering a prefix requires two steps:
+
+1. registering te nodes host-name and the operators contact at the service and retrieving the temporary prefixes
+2. validating the contact data and persisting the prefixes
+"""
+
+
+tags_metadata = [
+    {
+        "name": "Simple Mode",
+        "description": "These operations model address retrieval for a standard standalone falter-router. Most users will use this methods.",
+    },
+    {
+        "name": "Expert Mode",
+        "description": "These operations give the possibility to meet special needs. They include i.e. retrieval of one single IPv6-Prefix for Berlin-backbone site and other special things.",
+    },
+]
+
+app = FastAPI(
+    title="Freifunk Berlin – IP-Address API",
+    description=description,
+    version="0.1.0",
+    #terms_of_service="http://example.com/terms/",
+    contact={
+        "name": "Freifunk Berlin",
+        "url": "https://berlin.freifunk.net/",
+        "email": "berlin@berlin.freifunk.net",
+    },
+    license_info={
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    },
+    openapi_tags=tags_metadata
+)
 
 app_id = ""
 #db = nipap.NipapApi(app_id)
@@ -58,34 +101,97 @@ db_prefixes6 = ["2001:bf7:760:400::/56",
                 "2001:bf7:800:800::/56", "2001:bf7:820:1900::/56"]
 
 
-@app.post("/api/v1/simplePrefix")
-async def alloc_simple_prefix(request: SimplePrefixRequest):
+#
+# send data in Format for Wizard. Maybe..
+#
+
+#
+# If prefix didn't get confirmed, router should reset itself...
+#
+
+models.Base.metadata.create_all(bind=engine)
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        # hier gehts hoch...
+        db.close()
+
+@app.post("/api/v1/simplePrefix", tags=["Simple Mode"])
+def alloc_simple_prefix(r: SimplePrefixRequest, db: sqlalchemy.orm.Session = Depends(get_db)):
+    # check, that hostname not already in database
+    result = crud.search_hostname(db, r.host)
+    if result:
+        raise HTTPException(
+            422,
+            f"The hostname '{r.host}' is already in use!"
+        )
+
+    # alloc the prefixes in nipap
+    mesh = [ ]
+    mesh.append(db_mesh4.pop())
+    mesh.append("10.230.240.192")
+    mesh = json.dumps(mesh)
+    prefix4_ = db_prefixes4.pop()
+    prefix6_ = db_prefixes6.pop()
+
+    # save session with prefixes and states in session-database
+    data = models.Session(
+        session= uuid4().hex,
+        host = r.host,
+        email = r.email,
+        constituency = r.constituency,
+        mesh4 = mesh,
+        prefix4 = prefix4_,
+        prefix6 = prefix6_,
+        confirmed = False
+    )
+    crud.create_session_data(db, data)
+
+    # send response to client
 
     resp = SimplePrefixResponse(
-        session=uuid4(),
-        host=request.host,
-        email=request.email,
-        mesh4=db_mesh4,
-        prefix4=db_prefixes4[2],
-        prefix6=db_prefixes6[1],
-        #constituency=42,
-        constituencyName=ConstituencyName.c75,
-        state=PrefixState.temporary
+        session=data.session,
+        host=data.host,
+        email=data.email,
+        mesh4=json.loads(data.mesh4),
+        prefix4=data.prefix4,
+        prefix6=data.prefix6,
+        constituency=data.constituency,
+        constituencyName=ConstituencyName["c" + str(data.constituency)],
+        state=PrefixState.final if data.confirmed == True else PrefixState.temporary
     )
 
     return resp
 
 
-@app.post("/api/v1/simplePrefix/confirm")
-async def finalize_simple_prefix():
+@app.post("/api/v1/simplePrefix/confirm", tags=["Simple Mode"])
+def confirm_simple_prefix_allocation(r: ConfirmPrefixRequest, db: sqlalchemy.orm.session.Session = Depends(get_db)):
+    # delete temporary flag for the allocation from session-database
+
+    # get prefixes from database
+    resp = ConfirmPrefixResponse(
+        session=r.session,
+        host=r.host,
+        #mesh4=["10.30.50.1"],
+        #prefix4: Optional[IPv4Network]
+        #prefix6: Optional[IPv6Network]
+        state=PrefixState.final
+    )
+
+    return resp
+
+
+# ToDo: Something for deleting the entries made...
+
+@app.post("/api/v1/expertPrefix", tags=["Expert Mode"])
+def alloc_expert_prefix(request: ExpertPrefixRequest):
     pass
 
 
-@app.post("/api/v1/expertPrefix")
-async def alloc_expert_prefix():
-    pass
-
-
-@app.post("/api/v1/expertPrefix/confirm")
-async def finalize_expert_prefix():
+@app.post("/api/v1/expertPrefix/confirm", tags=["Expert Mode"])
+def confirm_expert_prefix_allocation(request: ConfirmPrefixRequest):
     pass
