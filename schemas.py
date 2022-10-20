@@ -53,7 +53,7 @@ class Hostname(BaseModel):
     # For our purposes, max 63 characters fit better
     @classmethod
     def name_must_comply_rfc952(cls, name_to_check):
-
+        # Todo: string lib benutzen
         allowed_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
 
         for char in name_to_check:
@@ -169,7 +169,7 @@ class SessionDBRepresentation(BaseModel):
 
 class SimplePrefixRequest(BaseModel):
     host: Hostname
-    email: EmailStr
+    email: list[EmailStr]
     size4: conint(ge=27, le=28)
     constituency: Constituency
     captcha: Captcha
@@ -199,7 +199,7 @@ class ExpertPrefixRequest(BaseModel):
 class SimplePrefixResponse(BaseModel):
     session: UUID4
     host: Hostname
-    email: EmailStr
+    email: [EmailStr]
     constituency: Constituency
 
 # old definition
