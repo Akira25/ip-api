@@ -182,43 +182,62 @@ class ExpertPrefixRequest(BaseModel):
     constituency: Constituency
     captcha: Captcha
 
+# old definition of Request
+# class SimplePrefixResponse(BaseModel):
+#     session: UUID4
+#     host: Hostname
+#     email: EmailStr
+#     mesh4: list[IPv4Address]
+#     # ToDo: mesh6-field needed? No: we begin counting mesh-addresses from the back of the prefix
+#     prefix4: IPv4Network
+#     prefix6: IPv6Network
+#     constituency: Constituency
+#     constituencyName: ConstituencyName
+#     state: PrefixState
+
 
 class SimplePrefixResponse(BaseModel):
     session: UUID4
     host: Hostname
     email: EmailStr
-    mesh4: list[IPv4Address]
-    # ToDo: mesh6-field needed? No: we begin counting mesh-addresses from the back of the prefix
-    prefix4: IPv4Network
-    prefix6: IPv6Network
     constituency: Constituency
-    constituencyName: ConstituencyName
-    state: PrefixState
 
+# old definition
+# class ExpertPrefixResponse(BaseModel):
+#     session: UUID4
+#     host: Hostname
+#     email: EmailStr
+#     prefix4: Optional[IPv4Network]
+#     prefix6: Optional[IPv6Network]
+#     constituency: Optional[Constituency]
+#     constituencyName: Optional[ConstituencyName]
+#     state: PrefixState
 
-class ExpertPrefixResponse(BaseModel):
-    session: UUID4
-    host: Hostname
-    email: EmailStr
-    prefix4: Optional[IPv4Network]
-    prefix6: Optional[IPv6Network]
-    constituency: Optional[Constituency]
-    constituencyName: Optional[ConstituencyName]
-    state: PrefixState
-
+# ToDo: ConfirmPrefix is a get-request now
+#class ConfirmPrefixRequest(BaseModel):
+#    session: UUID4
+#    host: Hostname
+#    mesh4: list[IPv4Address]
+#    prefix4: IPv4Network
+#    prefix6: IPv6Network
 
 class ConfirmPrefixRequest(BaseModel):
     session: UUID4
-    host: Hostname
-    mesh4: Optional[list[IPv4Address]]
-    prefix4: Optional[IPv4Network]
-    prefix6: Optional[IPv6Network]
+    token: UUID4
 
 
 class ConfirmPrefixResponse(BaseModel):
     session: UUID4
     host: Hostname
-    mesh4: Optional[list[IPv4Address]]
-    prefix4: Optional[IPv4Network]
-    prefix6: Optional[IPv6Network]
-    state: PrefixState
+    mesh4: list[IPv4Address]
+    prefix4: IPv4Network
+    prefix6: IPv6Network
+    # ToDo: Make URL
+    deleteLink: str
+    msgLink: str
+
+class GetPrefixesByMailRequest(BaseModel):
+    pass
+
+class GetPrefixesBySessionRequest(BaseModel):
+    pass

@@ -11,6 +11,20 @@ in a relational database and vice versa.
 """
 
 
+class ValidationSession(Base):
+    """This table holds Session-IDs and their tokens. By returning the right
+    token, a user should prove, that he owns an e-mail address.
+    """
+    __tablename__ = "openValidations"
+
+    session = Column(String, primary_key=True, index=True, unique=True)
+    host = Column(String, unique=True)
+    email = Column(String)
+    constituency = Column(Integer)
+    token = Column(String)
+    confirmed = Column(Boolean)
+
+
 class Session(Base):
     __tablename__ = "sessions"
 
